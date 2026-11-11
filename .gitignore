@@ -1,0 +1,10 @@
+# Godot 4 generated state
+.godot/
+# OS/editor temporary files
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
