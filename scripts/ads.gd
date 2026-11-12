@@ -7,6 +7,8 @@ extends Node
 
 static var I: Ads
 
+signal consent_changed           # consent / privacy status badla (Settings button ke liye)
+
 var enabled := false             # Android + plugin mila
 var can_request := false         # consent ke baad ads maang sakte hain
 var initialized := false
@@ -17,6 +19,8 @@ var _last_shown := -1000.0       # seconds (Time.get_ticks_msec)
 var _on_done: Callable = Callable()
 var _showing := false
 var _was_muted := false
+var _show_id := 0               # har ad ka apna number (purane timers/callbacks se bachav)
+var _visible_id := -1            # kaunsa ad sach mein screen par aaya
 
 
 func _ready() -> void:
@@ -32,9 +36,10 @@ func _ready() -> void:
 
 func _request_consent() -> void:
 	var params := ConsentRequestParameters.new()
-	if OS.is_debug_build() and OS.has_feature("ump_eea_test"):
+	if OS.is_debug_build() and AdsConfig.UMP_DEBUG_EEA:
 		var dbg := ConsentDebugSettings.new()
 		dbg.debug_geography = DebugGeography.Values.EEA
+		dbg.test_device_hashed_ids = AdsConfig.TEST_DEVICE_IDS.duplicate()
 		params.consent_debug_settings = dbg
 	UserMessagingPlatform.consent_information.update(params,
 		func() -> void:
@@ -67,11 +72,13 @@ func _after_consent() -> void:
 	can_request = st == ConsentInformation.ConsentStatus.OBTAINED \
 		or st == ConsentInformation.ConsentStatus.NOT_REQUIRED
 	_log("consent status=%d can_request=%s" % [st, can_request])
+	consent_changed.emit()
 	if can_request and not initialized:
 		_init_sdk()
 
 
-## Settings mein "Privacy" button dikhana hai? (EEA/UK users ke liye zaroori)
+## Settings mein "Privacy options" dikhana hai? Sirf UMP ke privacyOptionsRequirementStatus == REQUIRED par
+## (GDPR: EEA/UK/CH, aur US state regulations wale users, dono; region UMP khud tay karta hai).
 func privacy_options_required() -> bool:
 	return enabled and UserMessagingPlatform.consent_information.get_privacy_options_requirement_status() \
 		== ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
@@ -89,6 +96,7 @@ func show_privacy_options() -> void:
 func _init_sdk() -> void:
 	var rc := RequestConfiguration.new()
 	rc.max_ad_content_rating = AdsConfig.MAX_CONTENT_RATING
+	rc.test_device_ids = AdsConfig.TEST_DEVICE_IDS.duplicate()     # debug + release dono
 	MobileAds.set_request_configuration(rc)
 	var l := OnInitializationCompleteListener.new()
 	l.on_initialization_complete = func(_s: InitializationStatus) -> void:
@@ -131,30 +139,34 @@ func level_complete(level: int, on_done: Callable) -> void:
 		return
 	_on_done = on_done
 	_showing = true
+	_show_id += 1
+	var my_id := _show_id
 	var ad := _ad
 	_ad = null
 	var fs := FullScreenContentCallback.new()
 	fs.on_ad_showed_full_screen_content = func() -> void:
 		_last_shown = _now()
+		_visible_id = my_id
 	fs.on_ad_dismissed_full_screen_content = func() -> void:
 		ad.destroy()
-		_finish()
+		_finish(my_id)
 	fs.on_ad_failed_to_show_full_screen_content = func(err: AdError) -> void:
 		_log("interstitial show fail: %s" % (err.message if err else "?"))
 		ad.destroy()
-		_finish()
+		_finish(my_id)
 	ad.full_screen_content_callback = fs
 	_mute(true)
 	ad.show()
-	# Suraksha: agar SDK koi callback na de to bhi game atke nahi
-	get_tree().create_timer(90.0, true).timeout.connect(func() -> void:
-		if _showing:
-			_log("ad timeout, aage badh rahe hain")
-			_finish())
+	# Suraksha: agar ad 10s mein screen par aaya hi nahi (koi callback nahi), to game atke nahi.
+	# Ad dikh gaya to user ke band karne ka intezaar (purane ad ka timer naye ad ko nahi chhoota).
+	get_tree().create_timer(10.0, true).timeout.connect(func() -> void:
+		if _showing and _show_id == my_id and _visible_id != my_id:
+			_log("ad screen par nahi aaya, aage badh rahe hain")
+			_finish(my_id))
 
 
-func _finish() -> void:
-	if not _showing:
+func _finish(id: int) -> void:
+	if not _showing or id != _show_id:
 		return
 	_showing = false
 	_mute(false)

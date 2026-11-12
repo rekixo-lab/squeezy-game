@@ -17,6 +17,16 @@ const FIRST_AD_LEVEL := 3            # level 1 aur 2 ke baad koi ad nahi
 const MIN_GAP_SEC := 45.0            # do ads ke beech kam se kam itne second
 const MAX_CONTENT_RATING := "PG"     # G / PG (code mein bhi, AdMob dashboard mein bhi)
 
+# --- Test devices: in phones par release build mein bhi sirf TEST ads aate hain.
+# ID logcat se milta hai (Ads SDK "setTestDeviceIds" / UMP "addTestDeviceHashedId" wali line).
+const TEST_DEVICE_IDS: Array[String] = [
+	"7D2A71DA27FCA926F22F631706426DD1",   # Rahul ka Samsung A71 (SM-A715F)
+]
+
+# --- Consent form test: debug build mein UMP ko "EEA user" maan kar form dikhao
+# (sirf TEST_DEVICE_IDS wale phones par kaam karta hai).
+const UMP_DEBUG_EEA := true
+
 
 static func interstitial_id() -> String:
 	return TEST_INTERSTITIAL if OS.is_debug_build() else RELEASE_INTERSTITIAL

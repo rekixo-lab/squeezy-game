@@ -55,7 +55,7 @@ func _ready() -> void:
 	quit.pressed.connect(func(): get_tree().quit())
 	body.add_child(quit)
 
-	# Privacy (ads consent dobara chunna) - sirf jahan zaroori (EEA/UK), Google UMP batata hai
+	# Privacy options (ads consent dobara chunna): sirf jab UMP kahe REQUIRED (EU/UK GDPR ya US states)
 	privacy = Button.new()
 	privacy.text = "Privacy options"
 	privacy.flat = true
@@ -68,10 +68,17 @@ func _ready() -> void:
 		Audio.play("click")
 		Ads.I.show_privacy_options())
 	body.add_child(privacy)
-	visibility_changed.connect(func(): privacy.visible = Ads.I != null and Ads.I.privacy_options_required())
+	privacy.visible = false
+	visibility_changed.connect(_update_privacy)
+	if Ads.I:
+		Ads.I.consent_changed.connect(_update_privacy)
 
 	resized.connect(_layout)
 	_layout()
+
+
+func _update_privacy() -> void:
+	privacy.visible = Ads.I != null and Ads.I.privacy_options_required()
 
 
 func _part(src: Texture2D, region: Rect2, sz: Vector2) -> Control:
