@@ -19,8 +19,11 @@ const MAX_CONTENT_RATING := "PG"     # G / PG (code mein bhi, AdMob dashboard me
 
 # --- Test devices: in phones par release build mein bhi sirf TEST ads aate hain.
 # ID logcat se milta hai (Ads SDK "setTestDeviceIds" / UMP "addTestDeviceHashedId" wali line).
+# Dhyan: ye ID signing key par bhi nirbhar hai (Android 8+ ka ANDROID_ID har signing key ka alag).
+# Isliye ek hi phone ke DO ID hain: local build (debug/upload key) aur Play Store wala install (Google ki app-signing key).
 const TEST_DEVICE_IDS: Array[String] = [
-	"7D2A71DA27FCA926F22F631706426DD1",   # Rahul ka Samsung A71 (SM-A715F)
+	"7D2A71DA27FCA926F22F631706426DD1",   # Rahul ka Samsung A71 (SM-A715F), local/debug install
+	"006F84C3389919A0337892A400319A9E",   # Rahul ka Samsung A71, Play Store (internal testing) install
 ]
 
 # --- Consent form test: debug build mein UMP ko "EEA user" maan kar form dikhao

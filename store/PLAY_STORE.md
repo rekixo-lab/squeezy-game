@@ -1,4 +1,4 @@
-# Play Store: everything to fill in (Squeezy Game v1.0.0)
+# Play Store: everything to fill in (Squeezy Game v1.0.1)
 
 Fields marked ⚠️ need a decision or an action from the owner (Rahul). Everything else can be copy-pasted.
 
@@ -42,7 +42,11 @@ Fields marked ⚠️ need a decision or an action from the owner (Rahul). Everyt
 >
 > Don't miss the landing, or it's SPLASH into the water! How far can you go?
 
-**Release notes (v1.0.0):**
+**Release notes (v1.0.1, versionCode 2):**
+> • Privacy Policy link added in Settings
+> • Ad improvements and small fixes
+
+**Release notes (v1.0.0, versionCode 1):**
 > First release! 200 levels of jumping, flipping and squeezing fun.
 
 ---
@@ -128,4 +132,6 @@ Personal Play developer accounts created after 13 Nov 2023 must run a **closed t
 - Architectures: arm64-v8a + armeabi-v7a
 - Permissions (all from the Google Mobile Ads SDK, all install-time/normal, no runtime prompts): INTERNET, ACCESS_NETWORK_STATE, AD_ID (+ com.google.android.gms.permission.AD_ID), READ_BASIC_PHONE_STATE, WAKE_LOCK, FOREGROUND_SERVICE, and androidx's own DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION. Gameplay itself is fully offline.
 - AdMob: App ID `ca-app-pub-9987799703505828~4755476455`, interstitial `level_complete` = `ca-app-pub-9987799703505828/4508064440` (release builds only; debug builds use Google test IDs). ⚠️ AdMob → Blocking controls → **Content** → **Maximum ad content rating: PG** (the code also sets PG).
-- versionCode 1 / versionName 1.0.0. **Every new upload needs a higher versionCode** (in `export_presets.cfg`).
+- versionCode 2 / versionName 1.0.1. **Every new upload needs a higher versionCode** (in `export_presets.cfg`).
+- Upload file: `bash tools/build_release.sh` writes exactly ONE file to `build/upload/squeezy_game_v<name>_code<code>.aab`; logs, manifest and test .apks go to `build/test/`.
+- In-app privacy policy: Settings → "Privacy Policy" (always visible, opens the URL above in the browser). "Privacy options" (UMP) is shown only where UMP says it is required.

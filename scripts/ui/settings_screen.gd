@@ -1,12 +1,13 @@
 class_name SettingsScreen
 extends Control
 
-# Settings: Music / Sound / Effect ON-OFF, Help, Quit
+# Settings: Music / Sound / Effect ON-OFF, Help, Quit, Privacy Policy (hamesha), Privacy options (sirf UMP REQUIRED)
 
 signal closed
 
 
-const HEADER_H := 186.0                 # settings_bg.jpg mein "Settings" patti ki unchai (design units)
+const PRIVACY_URL := "https://squeezy-game.rekixo.com/privacy-policy.html"
+const HEADER_H := 186.0                # settings_bg.jpg mein "Settings" patti ki unchai (design units)
 const HEADER_COL := Color(0.204, 0.345, 0.992)
 const BODY_COL := Color(0.122, 0.157, 0.373)
 
@@ -55,15 +56,17 @@ func _ready() -> void:
 	quit.pressed.connect(func(): get_tree().quit())
 	body.add_child(quit)
 
+	# Privacy Policy: HAR desh mein hamesha dikhe (Play policy: app ke andar policy ka link zaroori)
+	var policy := _link_button("Privacy Policy", 1045)
+	policy.pressed.connect(func():
+		Audio.play("click")
+		var err := OS.shell_open(PRIVACY_URL)
+		if err != OK:
+			push_warning("Privacy policy link nahi khula: %s" % error_string(err)))
+	body.add_child(policy)
+
 	# Privacy options (ads consent dobara chunna): sirf jab UMP kahe REQUIRED (EU/UK GDPR ya US states)
-	privacy = Button.new()
-	privacy.text = "Privacy options"
-	privacy.flat = true
-	privacy.focus_mode = Control.FOCUS_NONE
-	privacy.add_theme_font_size_override("font_size", 34)
-	privacy.add_theme_color_override("font_color", Color(0.75, 0.82, 1.0))
-	privacy.position = Vector2(160, 1060 - HEADER_H)
-	privacy.size = Vector2(400, 70)
+	privacy = _link_button("Privacy options", 1115)
 	privacy.pressed.connect(func():
 		Audio.play("click")
 		Ads.I.show_privacy_options())
@@ -75,6 +78,21 @@ func _ready() -> void:
 
 	resized.connect(_layout)
 	_layout()
+
+
+# Quit ke neeche chhota text-link (design y = 720x1280 frame mein)
+func _link_button(text: String, design_y: float) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 34)
+	b.add_theme_color_override("font_color", Color(0.75, 0.82, 1.0))
+	b.add_theme_color_override("font_pressed_color", Color.WHITE)
+	b.add_theme_color_override("font_hover_color", Color(0.75, 0.82, 1.0))
+	b.position = Vector2(160, design_y - HEADER_H)
+	b.size = Vector2(400, 64)
+	return b
 
 
 func _update_privacy() -> void:
