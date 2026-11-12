@@ -15,6 +15,7 @@ var scroll: ScrollContainer
 var canvas: MapCanvas
 var buttons: Array = []
 var marker: Marker
+var hdr: Control
 
 
 func _ready() -> void:
@@ -51,7 +52,7 @@ func _ready() -> void:
 	canvas.resized.connect(_layout)
 
 	# Upar ka header (scroll ke upar tikka rehta hai)
-	var hdr := Control.new()
+	hdr = Control.new()
 	hdr.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	hdr.offset_left = -360
 	hdr.offset_right = 360
@@ -63,6 +64,15 @@ func _ready() -> void:
 	var bb := UIKit.tex_button("map_back.png", "map_back_p.png", Vector2(9.7, 9.7), Vector2(118.3, 115.3))
 	bb.pressed.connect(func(): back.emit())
 	hdr.add_child(bb)
+	resized.connect(_place_header)
+	_place_header()
+
+
+# Header notch / status bar ke neeche
+func _place_header() -> void:
+	var t: float = UIKit.safe_insets(self).top
+	hdr.offset_top = t
+	hdr.offset_bottom = t + 140
 
 
 func total_h() -> float:

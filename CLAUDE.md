@@ -1,4 +1,4 @@
-# CLAUDE.md: Squeezy Game (Godot 4.7, Android, fully offline)
+# CLAUDE.md: Squeezy Game (Godot 4.7, Android, offline gameplay + AdMob)
 
 Owner: Rahul (GitHub org `rekixo-lab`). He talks in Hindi/Hinglish, so reply to him in simple Hindi. Code comments in this project are in Hinglish (Roman script). Keep that style.
 
@@ -12,8 +12,9 @@ Owner: Rahul (GitHub org `rekixo-lab`). He talks in Hindi/Hinglish, so reply to 
 - `scenes/squeezy_preview.tscn` is a dev-only character test scene. It is excluded from export.
 
 ## Hard rules (Play Store policy: do not break)
-1. **Fully offline.** No INTERNET permission, no network code, no ads, no analytics, no crash-reporting SDKs, no login, no IAP. If any of these is ever added, `docs/privacy-policy.html` and the Data safety answers in `store/PLAY_STORE.md` must change first.
-2. The Android export must request **zero permissions**.
+1. **Gameplay is fully offline; the ONLY online part is Google AdMob** (interstitial after a level + Google UMP consent), through the Poing Studios plugin (`addons/admob`, logic in `scripts/ads.gd`, IDs in `scripts/ads_config.gd`). No other network code, no analytics, no crash-reporting SDKs, no login, no IAP, no company API. The game must stay fully playable with no internet: an ad that is not loaded is simply skipped. Any further SDK or data use needs `docs/privacy-policy.html` and the Data safety answers in `store/PLAY_STORE.md` updated first.
+2. **Permissions: only what the Google Mobile Ads SDK merges in** (INTERNET, ACCESS_NETWORK_STATE, AD_ID / com.google.android.gms.permission.AD_ID, plus its normal install-time dependencies such as WAKE_LOCK, FOREGROUND_SERVICE, READ_BASIC_PHONE_STATE and the androidx DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION). No dangerous/runtime permissions. Check the merged manifest of every release build.
+2a. **Ads rules:** debug builds use Google's TEST ad IDs; only release builds use the real App ID / ad unit (the `addons/squeezy_ads` export plugin swaps the App ID). No interstitial on levels 1-2, at least 45 s between ads, max ad content rating PG (in code and in the AdMob dashboard). Never click real ads on our own devices. Consent first (UMP), and a "Privacy options" entry in Settings where UMP requires it.
 3. Never commit signing keys or passwords. The release keystore lives outside the repo, and signing goes through the environment variables `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`, `GODOT_ANDROID_KEYSTORE_RELEASE_USER` and `GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD`.
 4. Increase `version/code` in `export_presets.cfg` for every Play upload. Keep `version/name` in sync with `config/version` in `project.godot`.
 5. No placeholder "coming soon" screens visible in release builds. Mail and Shop are hidden (`SHOW_MAIL` / `SHOW_SHOP` in `scripts/ui/home_screen.gd`).
@@ -21,7 +22,8 @@ Owner: Rahul (GitHub org `rekixo-lab`). He talks in Hindi/Hinglish, so reply to 
 ## Fixed decisions (from Rahul)
 - Website / privacy-policy host: **https://squeezy-game.rekixo.com** (privacy page at `/privacy-policy.html`)
 - Support email: **squeezygame@rekixo.com**
-- GitHub repo: **rekixo-lab/squeezy-godot** (branch `main` = live)
+- GitHub repo: **rekixo-lab/squeezy-game** (renamed from squeezy-godot, which still redirects; branch `main` = live, PUBLIC)
+- Privacy site: Cloudflare **Worker** `squeezy-game` (`wrangler.jsonc`, assets = `docs/`), domain squeezy-game.rekixo.com. Redeploy manually: `npx wrangler deploy`. rekixo.com mail is Google Workspace: never enable Cloudflare Email Routing.
 - Android package: `com.rekixo.squeezygame` (matches the domain; final once uploaded)
 
 ## Safety boundaries (Cloudflare + GitHub): ALWAYS follow these
@@ -142,7 +144,7 @@ gh pr create --base main --title "Release v1.0.0" --body "<summary of changes + 
 - Add the custom domain `squeezy-game.rekixo.com` to that Pages project. Cloudflare then creates the new CNAME record. Change no other DNS record.
 - Email: in Cloudflare Email Routing, add a NEW custom address `squeezygame@rekixo.com` that forwards to the inbox Rahul names. Ask him if you are unsure.
 - Check that `https://squeezy-game.rekixo.com/` and `/privacy-policy.html` open over HTTPS, and that a test mail to `squeezygame@rekixo.com` arrives (Rahul confirms).
-- This game stays **fully offline**. Do not connect it to the company API or database. Any online feature (leaderboard, cloud save) needs a new privacy policy and a new Data safety form first.
+- Gameplay stays **offline**; AdMob is the only online part. Do not connect it to the company API or database. Any other online feature (leaderboard, cloud save) needs a new privacy policy and a new Data safety form first.
 
 ### Step 10: Hand-off
 Give Rahul a short Hindi checklist of what **he** must do in the Play Console, following `store/PLAY_STORE.md`:

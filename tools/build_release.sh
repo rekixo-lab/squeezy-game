@@ -42,11 +42,8 @@ echo "== bundletool validate"
 $BT validate --bundle "$OUT" > /dev/null && echo "OK"
 echo "== Manifest"
 $BT dump manifest --bundle "$OUT" > build/manifest.xml
-grep -oE '(versionCode|versionName|minSdkVersion|targetSdkVersion|package)="[^"]*"' build/manifest.xml | sort -u
-grep -q 'targetSdkVersion="36"' build/manifest.xml || { echo "FAIL: targetSdk 36 nahi"; exit 1; }
-grep -q 'minSdkVersion="24"' build/manifest.xml || { echo "FAIL: minSdk 24 nahi"; exit 1; }
-if grep -q '<uses-permission' build/manifest.xml; then echo "FAIL: permissions mili:"; grep '<uses-permission' build/manifest.xml; exit 1; fi
-echo "permissions: 0 (OK)"
+grep -oE '(versionCode|versionName|package)="[^"]*"' build/manifest.xml | sort -u
+bash tools/check_manifest.sh build/manifest.xml release || { echo "Manifest check FAIL"; exit 1; }
 echo "== Signature"
 "$JDK/bin/jarsigner" -verify "$OUT" | grep -q "jar verified" && echo "jar verified (OK)"
 "$JDK/bin/keytool" -printcert -jarfile "$OUT" | grep -E "Owner|SHA256:" | head -2

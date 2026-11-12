@@ -444,7 +444,11 @@ func _win() -> void:
 	var m := ModalBox.open(popups, "LEVEL %d\nCOMPLETE!" % level,
 		("You finished all levels!" if last else "") + "\nCoins +%d" % level_coins)
 	if not last:
-		m.add_button("green", "NEXT", func(): start_level(level + 1))
+		# NEXT: pehle (niyam ke hisaab se) interstitial ad, phir agla level. Ad na ho to turant.
+		var won := level
+		m.add_button("green", "NEXT", func():
+			m.close()
+			Ads.I.level_complete(won, func(): start_level(won + 1)))
 	m.add_button("purple", "HOME", func(): home_requested.emit())
 
 
@@ -507,6 +511,7 @@ func _float_text(t: String, pos: Vector3, col: Color, size: int) -> void:
 # ============================== HUD ==============================
 
 var hud: CanvasLayer
+var hud_top: Control
 var popups: Control
 var coin_bar: CoinBar
 
@@ -521,7 +526,8 @@ func _setup_ui() -> void:
 	root.theme = UIKit.theme()
 	hud.add_child(root)
 
-	var top := Control.new()
+	hud_top = Control.new()
+	var top := hud_top
 	top.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	top.offset_left = -360
 	top.offset_right = 360
@@ -581,6 +587,17 @@ func _setup_ui() -> void:
 	popups.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	popups.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(popups)
+	root.resized.connect(_place_hud.bind(root))
+	_place_hud(root)
+
+
+# HUD ko notch / gesture bar se bachao
+func _place_hud(root: Control) -> void:
+	var safe := UIKit.safe_insets(root)
+	hud_top.offset_top = safe.top
+	hud_top.offset_bottom = safe.top + 220
+	hint.offset_top = -240 - safe.bottom
+	hint.offset_bottom = -170 - safe.bottom
 
 
 func _on_restart() -> void:
@@ -632,17 +649,32 @@ func _update_hint() -> void:
 	hint.text = t
 
 
-# Restart button ka gol teer
+# Restart button ka gol teer: ~300 degree ka arc, aur arc ke chhor par usi disha (tangent) mein teer
 class RestartIcon extends Control:
+	const A0 := -PI * 0.28            # arc shuru (upar-daayein)
+	const A1 := PI * 1.38             # arc khatam (upar-baayein); teer yahan, clockwise disha mein
+	const W_OUT := 14.0
+	const W_IN := 8.0
+
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		var c := size / 2.0 + Vector2(0, -3)
-		var r := minf(size.x, size.y) * 0.24
-		draw_arc(c, r, -PI * 0.15, PI * 1.45, 24, UIKit.PURPLE_DARK, 13, true)
-		draw_arc(c, r, -PI * 0.15, PI * 1.45, 24, Color.WHITE, 8, true)
-		var a := -PI * 0.15
-		var tip := c + Vector2(cos(a), sin(a)) * r
-		var pts := PackedVector2Array([tip + Vector2(-12, -10), tip + Vector2(12, -12), tip + Vector2(4, 10)])
-		draw_colored_polygon(pts, Color.WHITE)
+		var c := size / 2.0 + Vector2(0, -4)
+		var r := minf(size.x, size.y) * 0.23
+		_icon(c, r, UIKit.PURPLE_DARK, W_OUT, 1.3)
+		_icon(c, r, Color.WHITE, W_IN, 1.0)
+
+	func _icon(c: Vector2, r: float, col: Color, w: float, grow: float) -> void:
+		var head_len := r * 0.62 + (grow - 1.0) * w * 1.6
+		var head_w := r * 0.48 + (grow - 1.0) * w * 1.2
+		# arc teer ke base tak hi (warna sira mota dikhta hai)
+		var a_base := A1 - (head_len * 0.15) / r
+		draw_arc(c, r, A0, a_base, 32, col, w, true)
+		draw_circle(c + Vector2(cos(A0), sin(A0)) * r, w / 2.0, col)   # gol shuruaat
+		var p := c + Vector2(cos(a_base), sin(a_base)) * r
+		var t := Vector2(-sin(a_base), cos(a_base))     # clockwise tangent
+		var n := Vector2(cos(a_base), sin(a_base))      # bahar ki taraf
+		var tip := p + t * head_len
+		var pts := PackedVector2Array([tip, p + n * head_w, p - n * head_w])
+		draw_colored_polygon(pts, col)

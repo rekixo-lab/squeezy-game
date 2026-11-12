@@ -124,7 +124,7 @@ jobs:
             --export-release "$PRESET" build/squeezy_game.aab
           test -s build/squeezy_game.aab
 
-      - name: Verify AAB (bundletool, manifest, signature, 16 KB)
+      - name: Verify AAB (bundletool, manifest + permissions + AdMob ID, signature, 16 KB)
         env:
           KS_PASS: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
           KS_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
@@ -135,12 +135,9 @@ jobs:
           BT="java -jar $RUNNER_TEMP/bundletool.jar"
           $BT validate --bundle build/squeezy_game.aab > /dev/null
           $BT dump manifest --bundle build/squeezy_game.aab > "$RUNNER_TEMP/manifest.xml"
-          grep -q 'targetSdkVersion="36"' "$RUNNER_TEMP/manifest.xml" || { echo "::error::targetSdk is not 36"; exit 1; }
-          grep -q 'minSdkVersion="24"' "$RUNNER_TEMP/manifest.xml" || { echo "::error::minSdk is not 24"; exit 1; }
-          if grep -q '<uses-permission' "$RUNNER_TEMP/manifest.xml"; then
-            echo "::error::Manifest asks for permissions (app must request none)"
-            grep '<uses-permission' "$RUNNER_TEMP/manifest.xml"; exit 1
-          fi
+          grep -oE '(versionCode|versionName)="[^"]*"' "$RUNNER_TEMP/manifest.xml" | sort -u
+          # targetSdk 36, minSdk 24, sirf AdMob wali permissions (allowlist), asli AdMob App ID
+          bash tools/check_manifest.sh "$RUNNER_TEMP/manifest.xml" release
           jarsigner -verify build/squeezy_game.aab | grep -q "jar verified" || { echo "::error::AAB not signed"; exit 1; }
           # APKs banao (upload key se) aur 16 KB alignment check karo
           printf '%s' "$KS_PASS" > "$RUNNER_TEMP/kspass"

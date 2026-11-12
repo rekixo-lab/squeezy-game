@@ -14,7 +14,7 @@ Fields marked ⚠️ need a decision or an action from the owner (Rahul). Everyt
 | App or game | Game |
 | Category | Casual |
 | Free or paid | Free |
-| Contains ads | **No** |
+| Contains ads | **Yes** (Google AdMob interstitials) |
 | In-app purchases | **No** |
 
 ### ⚠️ Name risk
@@ -37,8 +37,8 @@ Fields marked ⚠️ need a decision or an action from the owner (Rahul). Everyt
 > • A new object to squash every few levels: 20 fruits, gadgets, furniture and more
 > • Simple one-tap controls that anyone can learn in seconds
 > • Juicy splats, satisfying crunches and cheerful music
-> • Fully OFFLINE: play anywhere, no internet needed
-> • No ads, no accounts, no data collection
+> • Play OFFLINE: anywhere, no internet needed
+> • No accounts, no in-app purchases
 >
 > Don't miss the landing, or it's SPLASH into the water! How far can you go?
 
@@ -63,11 +63,13 @@ Good screenshots usually show the home screen, the level map, a mid-air flip, a 
 
 **Privacy policy URL** ⚠️ (on your company domain via Cloudflare Pages; see CLAUDE.md Step 9):
 `https://squeezy-game.rekixo.com/privacy-policy.html`
-Developer email on Play: `squeezygame@rekixo.com` · Website: `https://squeezy-game.rekixo.com`
+Developer email on Play: `squeezygame@rekixo.com` · **Developer website: `https://squeezy-game.rekixo.com`** (needed for `app-ads.txt`: Store settings → Store listing contact details → Website)
+
+`app-ads.txt` is live at `https://squeezy-game.rekixo.com/app-ads.txt` (`google.com, pub-9987799703505828, DIRECT, f08c47fec0942fa0`). AdMob checks it after the app is published on Play (Apps → View all apps → app-ads.txt status).
 
 **App access:** All functionality is available without special access.
 
-**Ads:** No, my app does not contain ads.
+**Ads:** **Yes, my app contains ads.**
 
 **Content rating (IARC questionnaire):**
 - Category: Game (all other game types)
@@ -82,16 +84,27 @@ Developer email on Play: `squeezygame@rekixo.com` · Website: `https://squeezy-g
 
 **Target audience and content** ⚠️:
 - Recommended: **13+** (13–15, 16–17, 18+).
-- If you also pick under-13 age groups, the app joins the **Designed for Families** program. That needs extra declarations and more review. The game has no ads and no data collection, so it can qualify, but 13+ is the simpler path for v1.
-- "Could the app unintentionally appeal to children?" Cartoon style, so answer honestly. If asked, explain: no ads, no data collection, no purchases, no external links.
+- Do **not** pick under-13 age groups: then the app joins **Designed for Families**, and every ad SDK must be Families-certified with child-directed settings. 13+ keeps the normal AdMob setup.
+- "Could the app unintentionally appeal to children?" Cartoon style, so answer honestly. If asked, explain: ads are limited to max rating PG (in code and in AdMob), no purchases, no accounts, no external links.
 
-**Data safety form:**
-- Does your app collect or share any of the required user data types? **No**
-- Is all user data encrypted in transit? *(not applicable: there is no data in transit)*
-- Do you provide a way for users to request deletion? *(not applicable: nothing is collected; uninstalling deletes the local save)*
-- Result on the store: "No data collected · No data shared"
+**Data safety form** (only Google Mobile Ads SDK + UMP collect data; based on Google's "Google Mobile Ads SDK data disclosure": https://developers.google.com/admob/android/privacy/play-data-disclosure — ⚠️ re-check that page when filling the form, Google updates it):
+- Does your app collect or share any of the required user data types? **Yes**
+- Is all user data encrypted in transit? **Yes**
+- Do you provide a way for users to request that their data is deleted? **No** (Rekixo stores no user data; users can reset/delete the advertising ID in Android settings. Explain this if asked.)
+- Data types (for each: **Collected = Yes, Shared = Yes**, processed ephemerally = No, **Required** (users can't turn it off in-app; EEA/UK users choose personalisation in the consent form)):
 
-**Other declarations:** Government app: No · Financial features: None · Health: No · News: No · Advertising ID: **No, the app does not use the advertising ID**.
+| Category → data type (Google's wording) | Purposes |
+|---|---|
+| Location → **Approximate location** ("IP address, may be used to estimate the general location") | Advertising or marketing · Analytics · Fraud prevention, security, and compliance |
+| App activity → **App interactions** ("app launch, taps, video views") | Advertising or marketing · Analytics · Fraud prevention, security, and compliance |
+| App info and performance → **Diagnostics** ("app launch time, hang rate, energy usage") | Advertising or marketing · Analytics · Fraud prevention, security, and compliance |
+| Device or other IDs → **Device or other IDs** ("advertising ID, app set ID") | Advertising or marketing · Analytics · Fraud prevention, security, and compliance |
+
+- Google's page says all of this is "collected and shared automatically" and "encrypted in transit using TLS". Ad ID collection itself is optional for the user (reset/delete in Android settings).
+- Nothing else (no name, email, contacts, photos, precise location, financial info, messages, audio, files).
+- Result on the store: "Data shared: Location, App activity, App info and performance, Device or other IDs · Data collected: same"
+
+**Other declarations:** Government app: No · Financial features: None · Health: No · News: No · Advertising ID: **Yes, the app uses the advertising ID** → purpose: **Advertising or marketing** (+ Analytics, Fraud prevention, security, and compliance). The manifest declares `com.google.android.gms.permission.AD_ID`.
 
 ---
 
@@ -113,5 +126,6 @@ Personal Play developer accounts created after 13 Nov 2023 must run a **closed t
 - Format: Android App Bundle (.aab), signed with your **upload key**, with **Play App Signing** turned on (Play's default)
 - targetSdk 36 (Android 16), the requirement for new apps and updates from 31 Aug 2026 · minSdk 24
 - Architectures: arm64-v8a + armeabi-v7a
-- Permissions: **none** (no INTERNET). The app is fully offline.
+- Permissions (all from the Google Mobile Ads SDK, all install-time/normal, no runtime prompts): INTERNET, ACCESS_NETWORK_STATE, AD_ID (+ com.google.android.gms.permission.AD_ID), READ_BASIC_PHONE_STATE, WAKE_LOCK, FOREGROUND_SERVICE, and androidx's own DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION. Gameplay itself is fully offline.
+- AdMob: App ID `ca-app-pub-9987799703505828~4755476455`, interstitial `level_complete` = `ca-app-pub-9987799703505828/4508064440` (release builds only; debug builds use Google test IDs). ⚠️ AdMob → Blocking controls → **Content** → **Maximum ad content rating: PG** (the code also sets PG).
 - versionCode 1 / versionName 1.0.0. **Every new upload needs a higher versionCode** (in `export_presets.cfg`).

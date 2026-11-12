@@ -6,31 +6,111 @@ extends Control
 signal closed
 
 
+const HEADER_H := 186.0                 # settings_bg.jpg mein "Settings" patti ki unchai (design units)
+const HEADER_COL := Color(0.204, 0.345, 0.992)
+const BODY_COL := Color(0.122, 0.157, 0.373)
+
+var hdr: Control
+var body: Control
+var top_fill: ColorRect
+var privacy: Button
+
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	UIKit.gradient_bg(self, Color("3256fc"), Color("1c245d"))
-	var f := UIKit.frame(self)
-	UIKit.image(f, "settings_bg.jpg", Vector2.ZERO, Vector2(720, 1280))
+	# Lambe phone: header upar (notch ke neeche) chipka, baaki panel neeche ki jagah ke beech mein
+	var base := ColorRect.new()
+	base.color = BODY_COL
+	base.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(base)
+	top_fill = ColorRect.new()
+	top_fill.color = HEADER_COL
+	top_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(top_fill)
+
+	var src: Texture2D = UIKit.tex("settings_bg.jpg")
+	var k := src.get_height() / UIKit.H
+	hdr = _part(src, Rect2(0, 0, src.get_width(), HEADER_H * k), Vector2(UIKit.W, HEADER_H))
+	body = _part(src, Rect2(0, HEADER_H * k, src.get_width(), src.get_height() - HEADER_H * k),
+		Vector2(UIKit.W, UIKit.H - HEADER_H))
 
 	var close := UIKit.tex_button("set_close.png", "set_close_p.png", Vector2(606, 59.3), Vector2(92, 92))
 	close.pressed.connect(func(): closed.emit())
-	f.add_child(close)
+	hdr.add_child(close)
 
 	var keys := ["music", "sound", "effects"]
 	for i in 3:
 		var p := Pill.new()
 		p.key = keys[i]
-		p.position = Vector2(474.3, 288.0 + i * 108.6)
+		p.position = Vector2(474.3, 288.0 + i * 108.6 - HEADER_H)
 		p.size = Vector2(186.3, 69.7)
-		f.add_child(p)
+		body.add_child(p)
 
-	var help := UIKit.tex_button("set_help.png", "set_help_p.png", Vector2(81.7, 713), Vector2(556.7, 121.7))
+	var help := UIKit.tex_button("set_help.png", "set_help_p.png", Vector2(81.7, 713 - HEADER_H), Vector2(556.7, 121.7))
 	help.pressed.connect(_show_help)
-	f.add_child(help)
-	var quit := UIKit.tex_button("set_quit.png", "set_quit_p.png", Vector2(81.7, 891.7), Vector2(556.7, 131.7))
+	body.add_child(help)
+	var quit := UIKit.tex_button("set_quit.png", "set_quit_p.png", Vector2(81.7, 891.7 - HEADER_H), Vector2(556.7, 131.7))
 	quit.pressed.connect(func(): get_tree().quit())
-	f.add_child(quit)
+	body.add_child(quit)
+
+	# Privacy options (ads consent dobara chunna): sirf jab UMP kahe REQUIRED (EU/UK GDPR ya US states)
+	privacy = Button.new()
+	privacy.text = "Privacy options"
+	privacy.flat = true
+	privacy.focus_mode = Control.FOCUS_NONE
+	privacy.add_theme_font_size_override("font_size", 34)
+	privacy.add_theme_color_override("font_color", Color(0.75, 0.82, 1.0))
+	privacy.position = Vector2(160, 1060 - HEADER_H)
+	privacy.size = Vector2(400, 70)
+	privacy.pressed.connect(func():
+		Audio.play("click")
+		Ads.I.show_privacy_options())
+	body.add_child(privacy)
+	privacy.visible = false
+	visibility_changed.connect(_update_privacy)
+	if Ads.I:
+		Ads.I.consent_changed.connect(_update_privacy)
+
+	resized.connect(_layout)
+	_layout()
+
+
+func _update_privacy() -> void:
+	privacy.visible = Ads.I != null and Ads.I.privacy_options_required()
+
+
+func _part(src: Texture2D, region: Rect2, sz: Vector2) -> Control:
+	var at := AtlasTexture.new()
+	at.atlas = src
+	at.region = region
+	var c := Control.new()
+	c.size = sz
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(c)
+	var r := TextureRect.new()
+	r.texture = at
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_SCALE
+	r.size = sz
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(r)
+	return c
+
+
+func _layout() -> void:
+	var sz := size
+	if sz.x <= 0 or sz.y <= 0:
+		return
+	var safe := UIKit.safe_insets(self)
+	var x := (sz.x - UIKit.W) / 2.0
+	hdr.position = Vector2(x, safe.top)
+	top_fill.position = Vector2.ZERO
+	top_fill.size = Vector2(sz.x, safe.top + HEADER_H)
+	var free_top: float = safe.top + HEADER_H
+	var free_h: float = sz.y - safe.bottom - free_top
+	body.position = Vector2(x, free_top + maxf(0.0, (free_h - body.size.y) / 2.0))
 
 
 func _show_help() -> void:

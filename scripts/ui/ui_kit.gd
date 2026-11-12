@@ -133,3 +133,29 @@ static func image(parent: Control, tname: String, pos: Vector2, size: Vector2) -
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(r)
 	return r
+
+
+# Notch / status bar / gesture bar ki jagah (canvas units mein): {top, bottom, left, right}.
+# Desktop par sab 0. Phone par DisplayServer ka safe area screen pixels mein hota hai,
+# use canvas (stretch ke baad) units mein badalte hain.
+static func safe_insets(node: CanvasItem) -> Dictionary:
+	var out := {"top": 0.0, "bottom": 0.0, "left": 0.0, "right": 0.0}
+	if not OS.has_feature("mobile"):
+		return out
+	var canvas := node.get_viewport_rect().size
+	var win := Vector2(DisplayServer.window_get_size())
+	var safe := DisplayServer.get_display_safe_area()
+	if win.x <= 0 or win.y <= 0 or safe.size.x <= 0:
+		return out
+	var k := canvas / win
+	out.top = maxf(0.0, safe.position.y * k.y)
+	out.bottom = maxf(0.0, (win.y - safe.end.y) * k.y)
+	out.left = maxf(0.0, safe.position.x * k.x)
+	out.right = maxf(0.0, (win.x - safe.end.x) * k.x)
+	return out
+
+
+# 720x1280 design ko poori screen par "cover" karne ka scale + offset (kuch kinare kat sakte hain)
+static func cover(canvas: Vector2) -> Dictionary:
+	var s := maxf(canvas.x / W, canvas.y / H)
+	return {"scale": s, "offset": (canvas - Vector2(W, H) * s) / 2.0}

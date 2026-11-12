@@ -6,3 +6,7 @@ from Rekixo.
 
 Third-party component: fonts/game_font.ttf ("Lilita One") is licensed separately
 under the SIL Open Font License 1.1; see fonts/OFL.txt.
+
+Third-party component: addons/admob (Poing Studios "Godot AdMob" plugin) is licensed
+separately under the MIT License; see addons/admob/LICENSE. It uses the Google Mobile
+Ads SDK and Google User Messaging Platform SDK under Google's own terms.
