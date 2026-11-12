@@ -1,10 +1,35 @@
-# Godot 4 generated state
+# Godot 4
 .godot/
-# OS/editor temporary files
+/android/
+
+# Builds / exports
+/build/
+*.aab
+*.apk
+*.idsig
+
+# Signing secrets - NEVER commit
+*.keystore
+*.jks
+keystore.properties
+.env
+
+# Dev-only files
+/Claude outputs/
+*.bak
+*.tmp
 .DS_Store
+
+# OS/editor temporary files
 Thumbs.db
 *~
 *.swp
 *.swo
 .vscode/
 .idea/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

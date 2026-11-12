@@ -1,0 +1,169 @@
+# Play Store ke liye signed .aab banata hai (v* tag push par, ya haath se "Run workflow").
+# .aab sirf workflow artifact banta hai (1 din; repo public hai, isliye turant download karo).
+# Kabhi public release mein attach nahi hota.
+# Suraksha: koi pull_request trigger nahi (fork PR se kabhi nahi chalta). Secrets sirf tab
+# use hote hain jab (a) main branch se manual run ho, ya (b) v* tag jo main par ho.
+# Secrets (repo Settings -> Secrets -> Actions):
+#   ANDROID_UPLOAD_KEYSTORE_BASE64, ANDROID_UPLOAD_KEY_ALIAS, ANDROID_UPLOAD_KEYSTORE_PASSWORD
+name: Android release (AAB)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.2"
+  GODOT_STATUS: "stable"
+  BUILD_TOOLS: "36.1.0"
+  PRESET: "Android Release (Play Store AAB)"
+  BUNDLETOOL_VERSION: "1.18.3"
+
+jobs:
+  build:
+    # Sirf asli repo mein, aur sirf main se manual run ya v* tag push par
+    if: >-
+      github.repository == 'rekixo-lab/squeezy-game' &&
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Guard - tag must point to a commit on main
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $GITHUB_REF_NAME main branch par nahi hai. Secrets use nahi honge."
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" "platforms;android-36" "build-tools;${BUILD_TOOLS}"
+
+      - name: Godot editor + export templates (standard, non-.NET)
+        run: |
+          set -euo pipefail
+          V="${GODOT_VERSION}-${GODOT_STATUS}"
+          BASE="https://github.com/godotengine/godot/releases/download/${V}"
+          mkdir -p "$RUNNER_TEMP/godot" && cd "$RUNNER_TEMP/godot"
+          curl -fsSLO "${BASE}/Godot_v${V}_linux.x86_64.zip"
+          curl -fsSLO "${BASE}/Godot_v${V}_export_templates.tpz"
+          curl -fsSLO "${BASE}/SHA512-SUMS.txt"
+          grep -E "Godot_v${V}_(linux.x86_64.zip|export_templates.tpz)$" SHA512-SUMS.txt | sha512sum -c
+          unzip -q "Godot_v${V}_linux.x86_64.zip"
+          sudo install -m 755 "Godot_v${V}_linux.x86_64" /usr/local/bin/godot
+          TPL="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+          mkdir -p "$TPL"
+          unzip -q "Godot_v${V}_export_templates.tpz"
+          mv templates/* "$TPL/"
+          godot --version
+
+      - name: Godot editor settings (JDK + SDK path)
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.config/godot" "$HOME/.local/share/godot/keystores"
+          DEBUG_KS="$HOME/.local/share/godot/keystores/debug.keystore"
+          keytool -genkeypair -keystore "$DEBUG_KS" -alias androiddebugkey \
+            -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" > /dev/null
+          MAJOR_MINOR="$(echo "$GODOT_VERSION" | cut -d. -f1-2)"
+          cat > "$HOME/.config/godot/editor_settings-${MAJOR_MINOR}.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/android_sdk_path = "${ANDROID_HOME}"
+          export/android/debug_keystore = "${DEBUG_KS}"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
+      - name: Import project
+        run: godot --headless --path . --import
+
+      - name: Decode upload keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$KS_B64" || { echo "::error::ANDROID_UPLOAD_KEYSTORE_BASE64 secret missing"; exit 1; }
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          chmod 600 "$RUNNER_TEMP/upload.jks"
+
+      - name: Export signed AAB
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$RUNNER_TEMP/upload.jks"
+          mkdir -p build
+          godot --headless --path . --install-android-build-template \
+            --export-release "$PRESET" build/squeezy_game.aab
+          test -s build/squeezy_game.aab
+
+      - name: Verify AAB (bundletool, manifest, signature, 16 KB)
+        env:
+          KS_PASS: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/bundletool.jar" \
+            "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
+          BT="java -jar $RUNNER_TEMP/bundletool.jar"
+          $BT validate --bundle build/squeezy_game.aab > /dev/null
+          $BT dump manifest --bundle build/squeezy_game.aab > "$RUNNER_TEMP/manifest.xml"
+          grep -q 'targetSdkVersion="36"' "$RUNNER_TEMP/manifest.xml" || { echo "::error::targetSdk is not 36"; exit 1; }
+          grep -q 'minSdkVersion="24"' "$RUNNER_TEMP/manifest.xml" || { echo "::error::minSdk is not 24"; exit 1; }
+          if grep -q '<uses-permission' "$RUNNER_TEMP/manifest.xml"; then
+            echo "::error::Manifest asks for permissions (app must request none)"
+            grep '<uses-permission' "$RUNNER_TEMP/manifest.xml"; exit 1
+          fi
+          jarsigner -verify build/squeezy_game.aab | grep -q "jar verified" || { echo "::error::AAB not signed"; exit 1; }
+          # APKs banao (upload key se) aur 16 KB alignment check karo
+          printf '%s' "$KS_PASS" > "$RUNNER_TEMP/kspass"
+          $BT build-apks --bundle build/squeezy_game.aab --output "$RUNNER_TEMP/test.apks" \
+            --ks "$RUNNER_TEMP/upload.jks" --ks-key-alias "$KS_ALIAS" --ks-pass "file:$RUNNER_TEMP/kspass"
+          rm -f "$RUNNER_TEMP/kspass"
+          mkdir -p "$RUNNER_TEMP/apks" && unzip -q "$RUNNER_TEMP/test.apks" -d "$RUNNER_TEMP/apks"
+          ZA="$ANDROID_HOME/build-tools/${BUILD_TOOLS}/zipalign"
+          for f in "$RUNNER_TEMP"/apks/splits/*.apk; do "$ZA" -c -P 16 4 "$f"; done
+          unzip -q -o "$RUNNER_TEMP/apks/splits/base-arm64_v8a.apk" 'lib/*' -d "$RUNNER_TEMP/so"
+          for so in "$RUNNER_TEMP"/so/lib/arm64-v8a/*.so; do
+            readelf -lW "$so" | awk '/LOAD/{print $NF}' | grep -qv '0x4000' && { echo "::error::$so not 16 KB aligned"; exit 1; } || true
+          done
+          echo "All checks passed."
+
+      - name: Upload AAB (artifact, 1 day)
+        uses: actions/upload-artifact@v4
+        with:
+          name: squeezy_game-aab-${{ github.ref_name }}-${{ github.run_number }}
+          path: build/squeezy_game.aab
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" "$RUNNER_TEMP/kspass"

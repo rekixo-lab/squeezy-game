@@ -1,0 +1,11 @@
+{
+  // Sirf docs/ (privacy policy site) ke liye. Game se iska koi connection nahi.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "squeezy-game",
+  "compatibility_date": "2026-11-10",
+  "observability": { "enabled": true },
+  "assets": { "directory": "docs" },
+  "routes": [
+    { "pattern": "squeezy-game.rekixo.com", "custom_domain": true }
+  ]
+}
