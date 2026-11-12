@@ -19,3 +19,11 @@ keystore.properties
 *.bak
 *.tmp
 .DS_Store
+
+# OS/editor temporary files
+Thumbs.db
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
