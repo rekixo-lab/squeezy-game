@@ -12,6 +12,7 @@ var settings: SettingsScreen
 func _ready() -> void:
 	GameData.load_data()
 	add_child(Audio.new())
+	add_child(Ads.new())        # AdMob + consent (desktop par kuch nahi karta)
 
 	game = Game.new()
 	add_child(game)

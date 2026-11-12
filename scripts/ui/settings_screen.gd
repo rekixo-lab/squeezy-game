@@ -13,6 +13,7 @@ const BODY_COL := Color(0.122, 0.157, 0.373)
 var hdr: Control
 var body: Control
 var top_fill: ColorRect
+var privacy: Button
 
 
 func _ready() -> void:
@@ -53,6 +54,21 @@ func _ready() -> void:
 	var quit := UIKit.tex_button("set_quit.png", "set_quit_p.png", Vector2(81.7, 891.7 - HEADER_H), Vector2(556.7, 131.7))
 	quit.pressed.connect(func(): get_tree().quit())
 	body.add_child(quit)
+
+	# Privacy (ads consent dobara chunna) - sirf jahan zaroori (EEA/UK), Google UMP batata hai
+	privacy = Button.new()
+	privacy.text = "Privacy options"
+	privacy.flat = true
+	privacy.focus_mode = Control.FOCUS_NONE
+	privacy.add_theme_font_size_override("font_size", 34)
+	privacy.add_theme_color_override("font_color", Color(0.75, 0.82, 1.0))
+	privacy.position = Vector2(160, 1060 - HEADER_H)
+	privacy.size = Vector2(400, 70)
+	privacy.pressed.connect(func():
+		Audio.play("click")
+		Ads.I.show_privacy_options())
+	body.add_child(privacy)
+	visibility_changed.connect(func(): privacy.visible = Ads.I != null and Ads.I.privacy_options_required())
 
 	resized.connect(_layout)
 	_layout()

@@ -444,7 +444,11 @@ func _win() -> void:
 	var m := ModalBox.open(popups, "LEVEL %d\nCOMPLETE!" % level,
 		("You finished all levels!" if last else "") + "\nCoins +%d" % level_coins)
 	if not last:
-		m.add_button("green", "NEXT", func(): start_level(level + 1))
+		# NEXT: pehle (niyam ke hisaab se) interstitial ad, phir agla level. Ad na ho to turant.
+		var won := level
+		m.add_button("green", "NEXT", func():
+			m.close()
+			Ads.I.level_complete(won, func(): start_level(won + 1)))
 	m.add_button("purple", "HOME", func(): home_requested.emit())
 
 
