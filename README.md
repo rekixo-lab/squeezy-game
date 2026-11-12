@@ -22,8 +22,11 @@ badi cheezein, ooncha final. Har 3 level pe ek NAYI cheez aati hai ("NEW!" dikht
 20 fruits + Monitor, Keyboard, Mouse, CPU Cabinet, Speaker, UPS, Printer, Refrigerator,
 Washing Machine, Flower Pot + purani cheezein (kursi, bottle, drum...). Order: scripts/object_factory.gd -> ORDER
 
-## Font (zaroor karo, UI aur sundar dikhega)
-Google Fonts se "Lilita One" (free) download karo, .ttf file ko `fonts/game_font.ttf` naam se rakho.
+## Font
+`fonts/game_font.ttf` = "Lilita One" (SIL Open Font License, `fonts/OFL.txt`).
+
+## Licence
+Copyright (c) 2026 Rekixo. All rights reserved. Dekho `LICENSE`.
 
 ## Sounds
 Game khud sounds aur music banata hai. Apni files `sounds/` mein daal sakte ho (music.ogg, jump.ogg, splat.ogg ...).
